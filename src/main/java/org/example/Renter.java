@@ -53,6 +53,10 @@ public abstract class Renter {
 
     public abstract double calculateDiscountedFee(double baseFee);
 
+    public void addToTotalRentalFee(double fee) {
+        this.totalRentalFee += fee;
+    }
+
     // Getters and Setters
     public String getRenterID() {
         return renterID;

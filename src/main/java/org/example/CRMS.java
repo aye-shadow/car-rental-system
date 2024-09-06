@@ -4,47 +4,47 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class CRMS {
-    private static final List<String> CAR_BRANDS = Arrays.asList(
-        "Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes", "Audi", "Volkswagen", "Hyundai", "Nissan"
-    );
     private List<Car> cars;
     private List<Renter> renters;
     private List<RentalTransaction> transactions;
 
     public CRMS() {
+        this(true);
+    }
+
+    public CRMS(boolean initializeRandomly) {
         cars = new ArrayList<>();
         renters = new ArrayList<>();
         transactions = new ArrayList<>();
 
-        Random random = new Random();
-        int totalCars = random.nextInt(10) + 1;
-        for (int i = 0; i < totalCars; i++) {
-            int carType = random.nextInt(3) + 1;
-            if (carType == 1) {
-                cars.add(new CompactCar());
-            } 
-            else if (carType == 2) {
-                cars.add(new SUV());
-            } 
-            else {
-                cars.add(new LuxuryCar());
+        if (initializeRandomly) {
+            Random random = new Random();
+            int totalCars = random.nextInt(10) + 1;
+            for (int i = 0; i < totalCars; i++) {
+                int carType = random.nextInt(3) + 1;
+                if (carType == 1) {
+                    cars.add(new CompactCar());
+                } else if (carType == 2) {
+                    cars.add(new SUV());
+                } else {
+                    cars.add(new LuxuryCar());
+                }
             }
-        }    
 
-        int totalRenters = random.nextInt(10) + 1;
-        for (int i = 0; i < totalRenters; i++) {
-            int renterType = random.nextInt(3) + 1;
-            if (renterType == 1) {
-                renters.add(new FrequentRenter());
-            } else if (renterType == 2) {
-                renters.add(new RegularRenter());
+            int totalRenters = random.nextInt(10) + 1;
+            for (int i = 0; i < totalRenters; i++) {
+                int renterType = random.nextInt(3) + 1;
+                if (renterType == 1) {
+                    renters.add(new FrequentRenter());
+                } else if (renterType == 2) {
+                    renters.add(new RegularRenter());
+                } else {
+                    renters.add(new CorporateRenter());
+                }
             }
-            else {
-                renters.add(new CorporateRenter());
-            }
-        }    
+        }
     }
-
+    
     // Car Management
     public void addCar(int carType, String brand, String model, int year, double rentalFee) {
         switch(carType) {
@@ -173,8 +173,10 @@ public class CRMS {
         int carBrandChoice = scanner.nextInt();
         if (carBrandChoice < 0 || carBrandChoice >= brands.size()) {
             System.out.println("\tInvalid choice. Please try again.");
+            scanner.close();
             return "";
         }
+        scanner.close();
         return brands.get(carBrandChoice);
     }
 
@@ -190,8 +192,10 @@ public class CRMS {
         int carModelChoice = scanner.nextInt();
         if (carModelChoice < 0 || carModelChoice >= models.size()) {
             System.out.println("Invalid choice. Please try again.");
+            scanner.close();
             return "";
         }
+        scanner.close();
         return models.get(carModelChoice);
     }
 
@@ -311,13 +315,37 @@ public class CRMS {
                 renter.getRentedCars().remove(carToReturn);
                 carToReturn.setRentalStatus(false);
                 RentalTransaction transaction = findTransactionByRenterAndCar(renter, carToReturn);
-                if (transaction != null) {
-                    transaction.returnCar(new Date());
-                } else {
-                    throw new Exception("Transaction not found for the car.");
-                }
+                Car car = transaction.getCar();
+                Random random = new Random();
+
+                // Randomize distance (e.g., between 50 and 500 kilometers)
+                double distance = 50 + (450 * random.nextDouble());
+
+                // Randomize if the car is damaged
+                boolean isDamaged = random.nextBoolean();
+
+                // Calculate rental fee
+                double rentalFee = car.calculateRentalFee(distance);
+
+                // Calculate damage cost if the car is damaged
+                double damageCost = isDamaged ? car.calculateDamageCost() : 0;
+
+                // Update transaction
+                transaction.setDistance(distance);
+                transaction.setRentalFee(rentalFee);
+                transaction.setDamageCost(damageCost);
+                transaction.setReturnDate(new Date());
+                transaction.setDamaged(isDamaged);
+
+                // Update car status
+                car.setRentalStatus(false);
+
+                // Update renter's total rental fee
+                renter.addToTotalRentalFee(rentalFee);
+
+                System.out.println("Car returned successfully. Rental fee: " + rentalFee + ", Damage cost: " + damageCost);
             } else {
-                throw new Exception("Car ID not found in renter's rented cars.");
+                System.out.println("Transaction not found for car ID: " + carID);
             }
         } else {
             throw new Exception("Renter not found.");
@@ -326,19 +354,20 @@ public class CRMS {
 
     public void displayAllTransactions() {
         if (!transactions.isEmpty()) {
-            String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s | %-10s |%n";
-            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
-            System.out.format("| Renter Name     | Car ID     | Car Brand/Model      | Rental Date/Time          | Insured    |%n");
-            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s | %-25s | %-10s |%n";
+            System.out.format("+-----------------+------------+----------------------+---------------------------+---------------------------+------------+%n");
+            System.out.format("| Renter Name     | Car ID     | Car Brand/Model      | Rental Date/Time          | Return Date/Time          | Insured    |%n");
+            System.out.format("+-----------------+------------+----------------------+---------------------------+---------------------------+------------+%n");
             for (RentalTransaction transaction : transactions) {
                 String renterName = transaction.getRenter().getName();
                 String carID = transaction.getCar().getCarID();
                 String carBrandModel = transaction.getCar().getBrand() + " " + transaction.getCar().getModel();
                 String rentalDateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(transaction.getRentalDate());
+                String returnDateTime = transaction.getReturnDate() != null ? new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(transaction.getReturnDate()) : "N/A";
                 String insured = transaction.isInsuranceAdded() ? "Yes" : "No";
-                System.out.format(leftAlignFormat, renterName, carID, carBrandModel, rentalDateTime, insured);
+                System.out.format(leftAlignFormat, renterName, carID, carBrandModel, rentalDateTime, returnDateTime, insured);
             }
-            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            System.out.format("+-----------------+------------+----------------------+---------------------------+---------------------------+------------+%n");
         } else {
             System.out.println("No transactions found.");
         }
@@ -353,25 +382,26 @@ public class CRMS {
         }
 
         if (!renterTransactions.isEmpty()) {
-            String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s | %-10s |%n";
-            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
-            System.out.format("| Renter Name     | Car ID     | Car Brand/Model      | Rental Date/Time          | Insured    |%n");
-            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s | %-25s | %-10s |%n";
+            System.out.format("+-----------------+------------+----------------------+---------------------------+---------------------------+------------+%n");
+            System.out.format("| Renter Name     | Car ID     | Car Brand/Model      | Rental Date/Time          | Return Date/Time          | Insured    |%n");
+            System.out.format("+-----------------+------------+----------------------+---------------------------+---------------------------+------------+%n");
             for (RentalTransaction transaction : renterTransactions) {
                 String carID = transaction.getCar().getCarID();
                 String carBrandModel = transaction.getCar().getBrand() + " " + transaction.getCar().getModel();
                 String rentalDateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(transaction.getRentalDate());
+                String returnDateTime = transaction.getReturnDate() != null ? new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(transaction.getReturnDate()) : "N/A";
                 String insured = transaction.isInsuranceAdded() ? "Yes" : "No";
-                System.out.format(leftAlignFormat, renterName, carID, carBrandModel, rentalDateTime, insured);
+                System.out.format(leftAlignFormat, renterName, carID, carBrandModel, rentalDateTime, returnDateTime, insured);
             }
-            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            System.out.format("+-----------------+------------+----------------------+---------------------------+---------------------------+------------+%n");
         } else {
             System.out.println("No transactions found for renter: " + renterName);
         }
     }
 
     public void displayAllCurrentRentals() {
-        String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s |%n";
+        String leftAlignFormat = "| %-15s | %-10s | %-20s |%n";
         System.out.format("+-----------------+------------+----------------------+%n");
         System.out.format("| Renter Name     | Car ID     | Car Brand/Model      |%n");
         System.out.format("+-----------------+------------+----------------------+%n");
@@ -390,7 +420,7 @@ public class CRMS {
         if (renter != null) {
             List<Car> rentedCars = renter.getRentedCars();
             if (!rentedCars.isEmpty()) {
-                String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s |%n";
+                String leftAlignFormat = "| %-15s | %-10s | %-20s |%n";
                 System.out.format("+-----------------+------------+----------------------+%n");
                 System.out.format("| Renter Name     | Car ID     | Car Brand/Model      |%n");
                 System.out.format("+-----------------+------------+----------------------+%n");

@@ -1,8 +1,6 @@
 package org.example;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 public class RentalTransaction {
     private static int nextTransactionID = 1;
@@ -13,8 +11,10 @@ public class RentalTransaction {
     private Date rentalDate;
     private Date returnDate;
     private boolean insuranceAdded;
-    private double totalRentalCost;
+    private double distance;
+    private double rentalFee;
     private double damageCost;
+    private boolean isDamaged;
 
     public RentalTransaction(Renter renter, Car car, boolean insuranceAdded) {
         this.transactionID = "TRANS" + nextTransactionID++;
@@ -24,16 +24,16 @@ public class RentalTransaction {
         this.renter = renter;
         this.car = car;
         this.insuranceAdded = insuranceAdded;
-        this.totalRentalCost = 0.0;
+        this.damageCost = 0.0;
         this.damageCost = 0.0;
     }
 
     public void calculateTotalRentalCost(double distance) {
         double baseFee = car.calculateRentalFee(distance);
         double discountedFee = renter.calculateDiscountedFee(baseFee);
-        totalRentalCost = discountedFee;
+        damageCost = discountedFee;
         if (insuranceAdded && car instanceof Insurable) {
-            totalRentalCost += ((Insurable) car).calculateInsuranceCost();
+            damageCost += ((Insurable) car).calculateInsuranceCost();
         }
     }
 
@@ -104,11 +104,11 @@ public class RentalTransaction {
     }
 
     public double getTotalRentalCost() {
-        return totalRentalCost;
+        return damageCost;
     }
 
     public void setTotalRentalCost(double totalRentalCost) {
-        this.totalRentalCost = totalRentalCost;
+        this.damageCost = totalRentalCost;
     }
 
     public double getDamageCost() {
@@ -123,8 +123,20 @@ public class RentalTransaction {
         return returnDate != null;
     }
 
+    public void setDistance(double distance) {
+        this.distance = distance;
+    }
+
+    public void setRentalFee(double rentalFee) {
+        this.rentalFee = rentalFee;
+    }
+
+    public void setDamaged(boolean isDamaged) {
+        this.isDamaged = isDamaged;
+    }
+
     @Override
     public String toString() {
-        return "TransactionID: " + transactionID + ", Renter: " + renter.getName() + ", Car: " + car.getBrand() + " " + car.getModel() + ", Rental Date: " + rentalDate + ", Return Date: " + returnDate + ", Insurance Added: " + insuranceAdded + ", Total Rental Cost: " + totalRentalCost + ", Damage Cost: " + damageCost;
+        return "TransactionID: " + transactionID + ", Renter: " + renter.getName() + ", Car: " + car.getBrand() + " " + car.getModel() + ", Rental Date: " + rentalDate + ", Return Date: " + returnDate + ", Insurance Added: " + insuranceAdded + ", Total Rental Cost: " + damageCost + ", Damage Cost: " + damageCost;
     }
 }

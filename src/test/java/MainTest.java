@@ -1,54 +1,70 @@
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.example.*;
 
-import java.util.Date;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class MainTest {
+class MainTest {
+
     private CRMS crms;
 
     @BeforeEach
-    public void setUp() {
-        crms = new CRMS();
+    void setUp() {
+        crms = new CRMS(false);
     }
 
     @Test
-    public void testAddAndDisplayCars() {
-        assertEquals(3, crms.getAvailableCars().size());
+    void testAddCar() {
+        crms.addCar(1, "Toyota", "Corolla", 2020, 50.0);
+        assertTrue(crms.isCarIDExists(crms.getAvailableCars().get(0).getCarID()));
     }
 
     @Test
-    public void testAddAndDisplayRenters() {
-        assertEquals(3, crms.getRenters().size());
+    void testAddRenter() {
+        crms.addRenter(1, "John Doe", "john@example.com", "1234567890", "123 Main St");
+        assertTrue(crms.isRenterNameExists("John Doe"));
     }
 
     @Test
-    public void testRentCar() {
-//        crms.rentCar("R001", "C001", true, 100);
-        RentalTransaction transaction = crms.findTransactionByID("T001");
-        assertNotNull(transaction);
-        assertEquals("T001", transaction.getTransactionID());
+    void testRentCar() {
+        crms.addCar(1, "Toyota", "Corolla", 2020, 50.0);
+        crms.addRenter(1, "John Doe", "john@example.com", "1234567890", "123 Main St");
+        String carID = crms.getAvailableCars().get(0).getCarID();
+        crms.rentCar("John Doe", carID, true);
+        assertTrue(crms.findCarByID(carID).isRentalStatus());
     }
 
     @Test
-    public void testReturnCar() {
-//        crms.rentCar("R001", "C001", true, 100);
-//        crms.returnCar("T001");
-        RentalTransaction transaction = crms.findTransactionByID("T001");
-        assertTrue(transaction.isReturned());
+    void testReturnCar() throws Exception {
+        crms.addCar(1, "Toyota", "Corolla", 2020, 50.0);
+        crms.addRenter(1, "John Doe", "john@example.com", "1234567890", "123 Main St");
+        String carID = crms.getAvailableCars().get(0).getCarID();
+        crms.rentCar("John Doe", carID, true);
+        crms.returnCar("John Doe", carID);
+        assertFalse(crms.findCarByID(carID).isRentalStatus());
     }
 
     @Test
-    public void testRemoveCar() {
-        crms.removeCar("C001");
-        assertNull(crms.findCarByID("C001"));
+    void testFindRenterByName() {
+        crms.addRenter(1, "John Doe", "john@example.com", "1234567890", "123 Main St");
+        assertNotNull(crms.findRenterByName("John Doe"));
     }
 
     @Test
-    public void testRemoveRenter() {
-        crms.removeRenter("R001");
-        assertNull(crms.findRenterByID("R001"));
+    void testFindCarByID() {
+        crms.addCar(1, "Toyota", "Corolla", 2020, 50.0);
+        String carID = crms.getAvailableCars().get(0).getCarID();
+        assertNotNull(crms.findCarByID(carID));
+    }
+
+    @Test
+    void testFindTransactionByID() {
+        crms.addCar(1, "Toyota", "Corolla", 2020, 50.0);
+        crms.addRenter(1, "John Doe", "john@example.com", "1234567890", "123 Main St");
+        String carID = crms.getAvailableCars().get(0).getCarID();
+        crms.rentCar("John Doe", carID, true);
+        RentalTransaction transaction = crms.findTransactionByRenterAndCar(crms.findRenterByName("John Doe"), crms.findCarByID(carID));
+        assertNotNull(crms.findTransactionByID(transaction.getTransactionID()));
     }
 }
