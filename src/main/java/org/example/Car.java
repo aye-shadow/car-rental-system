@@ -94,6 +94,10 @@ public abstract class Car {
         this.plateNumber = plateNumber;
     }
 
+    public boolean isInsurable() {
+        return this instanceof Insurable;
+    }
+
     @Override
     public String toString() {
         return "CarID: " + carID + ", Brand: " + brand + ", Model: " + model + ", Year: " + year + ", Rental Status: " + rentalStatus + ", Rental Fee: " + rentalFee + ", Plate Number: " + plateNumber;

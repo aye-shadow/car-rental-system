@@ -1,8 +1,12 @@
 package org.example;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class RentalTransaction {
+    private static int nextTransactionID = 1;
+
     private String transactionID;
     private Renter renter;
     private Car car;
@@ -12,11 +16,13 @@ public class RentalTransaction {
     private double totalRentalCost;
     private double damageCost;
 
-    public RentalTransaction(String transactionID, Renter renter, Car car, Date rentalDate, boolean insuranceAdded) {
-        this.transactionID = transactionID;
+    public RentalTransaction(Renter renter, Car car, boolean insuranceAdded) {
+        this.transactionID = "TRANS" + nextTransactionID++;
+        this.rentalDate = new Date();
+        this.returnDate = null;
+
         this.renter = renter;
         this.car = car;
-        this.rentalDate = rentalDate;
         this.insuranceAdded = insuranceAdded;
         this.totalRentalCost = 0.0;
         this.damageCost = 0.0;

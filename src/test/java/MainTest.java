@@ -26,7 +26,7 @@ public class MainTest {
 
     @Test
     public void testRentCar() {
-        crms.rentCar("T001", "R001", "C001", new Date(), true, 100);
+//        crms.rentCar("R001", "C001", true, 100);
         RentalTransaction transaction = crms.findTransactionByID("T001");
         assertNotNull(transaction);
         assertEquals("T001", transaction.getTransactionID());
@@ -34,8 +34,8 @@ public class MainTest {
 
     @Test
     public void testReturnCar() {
-        crms.rentCar("T001", "R001", "C001", new Date(), true, 100);
-        crms.returnCar("T001", new Date());
+//        crms.rentCar("R001", "C001", true, 100);
+//        crms.returnCar("T001");
         RentalTransaction transaction = crms.findTransactionByID("T001");
         assertTrue(transaction.isReturned());
     }

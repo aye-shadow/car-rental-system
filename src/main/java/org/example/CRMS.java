@@ -1,5 +1,6 @@
 package org.example;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class CRMS {
@@ -59,19 +60,6 @@ public class CRMS {
         }
     }
 
-    public void displayAllCars() {
-        String leftAlignFormat = "| %-10s | %-11s | %-15s | %-10s | %-4d | %-10.2f | %-10s | %-8s |%n";
-        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+----------+%n");
-        System.out.format("| CarID      | PlateNumber | Brand           | Model      | Year | Rental Fee | Type       | Rented   |%n");
-        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+----------+%n");
-        for (Car car : cars) {
-            String carType = getCarType(car);
-            String rentalStatus = car.isRentalStatus() ? "Yes" : "No";
-            System.out.format(leftAlignFormat, car.getCarID(), car.getPlateNumber(), car.getBrand(), car.getModel(), car.getYear(), car.getRentalFee(), carType, rentalStatus);
-        }
-        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+----------+%n");
-    }
-    
     private String getCarType(Car car) {
         if (CarDetails.SUV_BRANDS.contains(car.getBrand())) {
             return "SUV";
@@ -82,6 +70,35 @@ public class CRMS {
         } else {
             return "Unknown";
         }
+    }
+
+    public void displayAllCars() {
+        String leftAlignFormat = "| %-10s | %-11s | %-15s | %-10s | %-4d | %-10.2f | %-10s | %-8s | %-10s |%n";
+        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+----------+------------+%n");
+        System.out.format("| CarID      | PlateNumber | Brand           | Model      | Year | Rental Fee | Type       | Rented   | Insurable  |%n");
+        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+----------+------------+%n");
+        for (Car car : cars) {
+            String carType = getCarType(car);
+            String rentalStatus = car.isRentalStatus() ? "Yes" : "No";
+            String insurableStatus = car.isInsurable() ? "Yes" : "No";
+            System.out.format(leftAlignFormat, car.getCarID(), car.getPlateNumber(), car.getBrand(), car.getModel(), car.getYear(), car.getRentalFee(), carType, rentalStatus, insurableStatus);
+        }
+        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+----------+------------+%n");
+    }
+
+    public void displayAvailableCars() {
+        String leftAlignFormat = "| %-10s | %-11s | %-15s | %-10s | %-4d | %-10.2f | %-10s | %-10s |%n";
+        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+------------+%n");
+        System.out.format("| CarID      | PlateNumber | Brand           | Model      | Year | Rental Fee | Type       | Insurable  |%n");
+        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+------------+%n");
+        for (Car car : cars) {
+            if (!car.isRentalStatus()) {
+                String carType = getCarType(car);
+                String insurableStatus = car.isInsurable() ? "Yes" : "No";
+                System.out.format(leftAlignFormat, car.getCarID(), car.getPlateNumber(), car.getBrand(), car.getModel(), car.getYear(), car.getRentalFee(), carType, insurableStatus);
+            }
+        }
+        System.out.format("+------------+-------------+-----------------+------------+------+------------+------------+------------+%n");
     }
 
     public void displayCarByID(String carID) {
@@ -254,31 +271,150 @@ public class CRMS {
     }
 
     // Rent Transaction Management
-    public void rentCar(String transactionID, String renterID, String carID, Date rentalDate, boolean insuranceAdded, double distance) {
-        Renter renter = findRenterByID(renterID);
+    public void rentCar(String renterName, String carID, boolean addInsurance) {
+        Renter renter = findRenterByName(renterName);
         Car car = findCarByID(carID);
         if (renter != null && car != null && !car.isRentalStatus()) {
-            RentalTransaction transaction = new RentalTransaction(transactionID, renter, car, rentalDate, insuranceAdded);
-            transaction.calculateTotalRentalCost(distance);
-            transactions.add(transaction);
             car.setRentalStatus(true);
             renter.getRentedCars().add(car);
+            RentalTransaction transaction = new RentalTransaction(renter, car, addInsurance);
+            transactions.add(transaction);
             System.out.println("Car rented successfully!");
+            if (addInsurance) {
+                System.out.println("Insurance added.");
+            }
         } else {
             System.out.println("Car rental failed. Either the car is already rented or the renter/car ID is invalid.");
         }
     }
 
-    public void returnCar(String transactionID, Date returnDate) {
-        RentalTransaction transaction = findTransactionByID(transactionID);
-        if (transaction != null) {
-            transaction.returnCar(returnDate);
-            transaction.calculateDamageCost();
-            System.out.println("Car returned successfully!");
-            System.out.println(transaction);
-        } else {
-            System.out.println("Return failed. Invalid transaction ID.");
+    public RentalTransaction findTransactionByRenterAndCar(Renter renter, Car car) {
+        for (RentalTransaction transaction : transactions) {
+            if (transaction.getRenter().equals(renter) && transaction.getCar().equals(car) && !transaction.isReturned()) {
+                return transaction;
+            }
         }
+        return null;
+    }
+
+    public void returnCar(String renterName, String carID) throws Exception {
+        Renter renter = findRenterByName(renterName);
+        if (renter != null) {
+            Car carToReturn = null;
+            for (Car car : renter.getRentedCars()) {
+                if (car.getCarID().equals(carID)) {
+                    carToReturn = car;
+                    break;
+                }
+            }
+            if (carToReturn != null) {
+                renter.getRentedCars().remove(carToReturn);
+                carToReturn.setRentalStatus(false);
+                RentalTransaction transaction = findTransactionByRenterAndCar(renter, carToReturn);
+                if (transaction != null) {
+                    transaction.returnCar(new Date());
+                } else {
+                    throw new Exception("Transaction not found for the car.");
+                }
+            } else {
+                throw new Exception("Car ID not found in renter's rented cars.");
+            }
+        } else {
+            throw new Exception("Renter not found.");
+        }
+    }
+
+    public void displayAllTransactions() {
+        if (!transactions.isEmpty()) {
+            String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s | %-10s |%n";
+            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            System.out.format("| Renter Name     | Car ID     | Car Brand/Model      | Rental Date/Time          | Insured    |%n");
+            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            for (RentalTransaction transaction : transactions) {
+                String renterName = transaction.getRenter().getName();
+                String carID = transaction.getCar().getCarID();
+                String carBrandModel = transaction.getCar().getBrand() + " " + transaction.getCar().getModel();
+                String rentalDateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(transaction.getRentalDate());
+                String insured = transaction.isInsuranceAdded() ? "Yes" : "No";
+                System.out.format(leftAlignFormat, renterName, carID, carBrandModel, rentalDateTime, insured);
+            }
+            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+        } else {
+            System.out.println("No transactions found.");
+        }
+    }
+
+    public void displayTransactionsByRenter(String renterName) {
+        List<RentalTransaction> renterTransactions = new ArrayList<>();
+        for (RentalTransaction transaction : transactions) {
+            if (transaction.getRenter().getName().equalsIgnoreCase(renterName)) {
+                renterTransactions.add(transaction);
+            }
+        }
+
+        if (!renterTransactions.isEmpty()) {
+            String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s | %-10s |%n";
+            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            System.out.format("| Renter Name     | Car ID     | Car Brand/Model      | Rental Date/Time          | Insured    |%n");
+            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+            for (RentalTransaction transaction : renterTransactions) {
+                String carID = transaction.getCar().getCarID();
+                String carBrandModel = transaction.getCar().getBrand() + " " + transaction.getCar().getModel();
+                String rentalDateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(transaction.getRentalDate());
+                String insured = transaction.isInsuranceAdded() ? "Yes" : "No";
+                System.out.format(leftAlignFormat, renterName, carID, carBrandModel, rentalDateTime, insured);
+            }
+            System.out.format("+-----------------+------------+----------------------+---------------------------+------------+%n");
+        } else {
+            System.out.println("No transactions found for renter: " + renterName);
+        }
+    }
+
+    public void displayAllCurrentRentals() {
+        String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s |%n";
+        System.out.format("+-----------------+------------+----------------------+%n");
+        System.out.format("| Renter Name     | Car ID     | Car Brand/Model      |%n");
+        System.out.format("+-----------------+------------+----------------------+%n");
+        for (Renter renter : renters) {
+            for (Car car : renter.getRentedCars()) {
+                String carID = car.getCarID();
+                String carBrandModel = car.getBrand() + " " + car.getModel();
+                System.out.format(leftAlignFormat, renter.getName(), carID, carBrandModel);
+            }
+        }
+        System.out.format("+-----------------+------------+----------------------+%n");
+    }
+
+    public void displayRenterCurrentRentals(String renterName) {
+        Renter renter = findRenterByName(renterName);
+        if (renter != null) {
+            List<Car> rentedCars = renter.getRentedCars();
+            if (!rentedCars.isEmpty()) {
+                String leftAlignFormat = "| %-15s | %-10s | %-20s | %-25s |%n";
+                System.out.format("+-----------------+------------+----------------------+%n");
+                System.out.format("| Renter Name     | Car ID     | Car Brand/Model      |%n");
+                System.out.format("+-----------------+------------+----------------------+%n");
+                for (Car car : rentedCars) {
+                    String carID = car.getCarID();
+                    String carBrandModel = car.getBrand() + " " + car.getModel();
+                    System.out.format(leftAlignFormat, renterName, carID, carBrandModel);
+                }
+                System.out.format("+-----------------+------------+----------------------+%n");
+            } else {
+                System.out.println("No current transactions found for renter: " + renterName);
+            }
+        } else {
+            System.out.println("Renter not found: " + renterName);
+        }
+    }
+
+    public Renter findRenterByName(String name) {
+        for (Renter renter : renters) {
+            if (renter.getName().equalsIgnoreCase(name)) {
+                return renter;
+            }
+        }
+        return null;
     }
 
     public Renter findRenterByID(String renterID) {
@@ -290,6 +426,15 @@ public class CRMS {
         return null;
     }
 
+    public boolean isRenterNameExists(String name) {
+        for (Renter renter : renters) {
+            if (renter.getName().equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Car findCarByID(String carID) {
         for (Car car : cars) {
             if (car.getCarID().equals(carID)) {
@@ -297,6 +442,15 @@ public class CRMS {
             }
         }
         return null;
+    }
+
+    public boolean isCarIDExists(String carID) {
+        for (Car car : cars) {
+            if (car.getCarID().equalsIgnoreCase(carID)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public RentalTransaction findTransactionByID(String transactionID) {

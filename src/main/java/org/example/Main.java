@@ -1,15 +1,8 @@
 package org.example;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Scanner;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class Main {
-    private static final Logger logger = Logger.getLogger(Main.class.getName());
-
     public static void main(String[] args) {
         CRMS crms = new CRMS();
         Scanner scanner = new Scanner(System.in);
@@ -19,15 +12,17 @@ public class Main {
             System.out.println("\nMenu:");
             System.out.println("1. Display cars:");
             System.out.println("2. Display renters");
+
             System.out.println("3. Add a car");
             System.out.println("4. Add a renter");
 
             System.out.println("5. Rent a car");
-            System.out.println("6. Display rental details");
+            System.out.println("6. Return a car");
+            System.out.println("7. Display rental details");
 
-            System.out.println("7. Return a car");
             System.out.println("8. Remove a car");
             System.out.println("9. Remove a renter");
+
             System.out.println("0. Exit");
             System.out.print("Choose an option: ");
 
@@ -36,7 +31,7 @@ public class Main {
 
             switch (choice) {
                 case 1:
-                    System.out.print("Display car by:\n 1. ID\n 2. Brand\n 3. Type\n4. All\nChoose an option: ");
+                    System.out.print("Display car by:\n 1. ID\n 2. Brand\n 3. Type\n 4. All\n 5. Available\nChoose an option: ");
                     int displayChoice = scanner.nextInt();
                     switch (displayChoice) {
                         case 1:
@@ -58,13 +53,17 @@ public class Main {
                             System.out.println("* Displaying all cars:");
                             crms.displayAllCars();
                             break;
+                        case 5:
+                            System.out.println("* Displaying available cars:");
+                            crms.displayAvailableCars();
+                            break;
                         default:
                             System.out.println("Invalid option. Please try again.");
                             break;
                     }
                     break;
                 case 2:
-                    System.out.print("Display renter by:\n 1. ID\n 2. name\n 3. All\nChoose an option: ");
+                    System.out.print("Display renter by:\n 1. ID\n 2. Name\n 3. All\nChoose an option: ");
                     int renterChoice = scanner.nextInt();
                     switch (renterChoice) {
                         case 1:
@@ -105,11 +104,19 @@ public class Main {
                     int addRenterChoice = scanner.nextInt();
                     if (addRenterChoice >= 1 && addRenterChoice <= 3) {
                         System.out.print("\tEnter name: ");
-                        String name = scanner.nextLine();
-                        while (name.isEmpty()) {
-                            System.out.print("Name cannot be empty. Enter name: ");
+                        String name = "";
+                        boolean isEmpty, nameExists;
+                        do {
                             name = scanner.nextLine();
-                        }
+                            isEmpty = name.isEmpty();
+                            nameExists = crms.isRenterNameExists(name);
+                            if (isEmpty) {
+                                System.out.print("Name cannot be empty. Enter name: ");
+                            }
+                            else {
+                                System.out.print("Name already exists. Enter name: ");
+                            }
+                        } while(isEmpty || nameExists);
 
                         System.out.print("Enter email: ");
                         String email = scanner.nextLine();
@@ -138,66 +145,112 @@ public class Main {
                     }
                     break;
                 case 5:
-                    System.out.print("Enter transaction ID: ");
-                    String transactionId = scanner.nextLine();
-                    System.out.print("Enter renter ID: ");
-                    String rentRenterId = scanner.nextLine();
-                    System.out.print("Enter car ID: ");
-                    String rentCarId = scanner.nextLine();
-                    System.out.print("Enter rental date (yyyy-mm-dd): ");
-                    String rentDateStr = scanner.nextLine();
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                    Date rentDate = null;
-                    try {
-                        rentDate = dateFormat.parse(rentDateStr);
-                    } catch (ParseException e) {
-                        System.out.println("Invalid date format. Please use yyyy-mm-dd.");
-                        logger.log(Level.SEVERE, "Invalid date format. Please use yyyy-mm-dd.", e);
+                    System.out.print("Who's renting? Enter name: ");
+                    String rentRenterName = scanner.nextLine();
+                    if (crms.isRenterNameExists(rentRenterName)) {
+                        crms.displayAvailableCars();
+                        System.out.print("Enter car ID: ");
+                        String rentCarId;
+                        Car selectedCar;
+                        do {
+                            rentCarId = scanner.nextLine();
+                            selectedCar = crms.findCarByID(rentCarId);
+                            if (selectedCar == null) {
+                                System.out.print("Car ID does not exist. Enter a valid car ID: ");
+                            }
+                        } while (selectedCar == null);
+                        boolean addInsurance = false;
+                        if (selectedCar.isInsurable()) {
+                            System.out.print("Add insurance? (y/n): ");
+                            String insuranceChoice = scanner.nextLine();
+                            addInsurance = insuranceChoice.equalsIgnoreCase("yes");
+                        }
+                        crms.rentCar(rentRenterName, rentCarId, addInsurance);
                     }
-                    System.out.print("Is the car insured (true/false): ");
-                    boolean isInsured = scanner.nextBoolean();
-                    System.out.print("Enter rental fee: ");
-                    double rentalFee = scanner.nextDouble();
-                    scanner.nextLine(); // Consume newline
-                    crms.rentCar(transactionId, rentRenterId, rentCarId, rentDate, isInsured, rentalFee);
+                    else {
+                        System.out.println("Invalid option. Please try again.");
+                    }
                     break;
+                // In Main.java
                 case 6:
+                    System.out.print("Who's returning? Enter name: ");
+                    String returnRenterName = scanner.nextLine();
+                    if (crms.isRenterNameExists(returnRenterName)) {
+                        crms.displayRenterCurrentRentals(returnRenterName);
+                        System.out.print("Enter returning car ID: ");
+                        String returnCarId = scanner.nextLine();
+                        try {
+                            crms.returnCar(returnRenterName, returnCarId);
+                            System.out.println("Car returned successfully!");
+                        } catch (Exception e) {
+                            System.out.println(e.getMessage());
+                        }
+                    } else {
+                        System.out.println("Invalid option. Please try again.");
+                    }
                     break;
                 case 7:
+                    System.out.print("Display transactional: \n 1. History\n 2. Current\nChoose an option: ");
+                    int displayTransType = scanner.nextInt();
+                    switch(displayTransType) {
+                        case 1:
+                            System.out.print("\tDisplay transactions by:\n\t 1. Renter\n\t 2. All\n\tChoose an option: ");
+                            int displayTransChoice = scanner.nextInt();
+                            scanner.nextLine(); // Consume newline
+                            switch (displayTransChoice) {
+                                case 1:
+                                    System.out.print("\tEnter renter's name: ");
+                                    String renterName = scanner.nextLine();
+                                    if (crms.isRenterNameExists(renterName)) {
+                                        crms.displayTransactionsByRenter(renterName);
+                                    }
+                                    else {
+                                        System.out.println("\tRenter does not exist. Please try again.");
+                                    }
+                                    break;
+
+                                case 2:
+                                    crms.displayAllTransactions();
+                                    break;
+                                default:
+                                    System.out.println("\tInvalid option. Please try again.");
+                                    break;
+                            }
+                            break;
+                        case 2:
+                            System.out.print("\tDisplay current rentals by: \n\t 1. All\n\t 2. Renter\n\tChoose an option: ");
+                            int displayCurrentChoice = scanner.nextInt();
+                            switch (displayCurrentChoice) {
+                                case 1:
+                                    crms.displayAllCurrentRentals();
+                                    break;
+                                case 2:
+                                    System.out.print("\tEnter renter's name: ");
+                                    String renterName = scanner.nextLine();
+                                    if (crms.isRenterNameExists(renterName)) {
+                                        crms.displayRenterCurrentRentals(renterName);
+                                    }
+                                    else {
+                                        System.out.println("\tRenter does not exist. Please try again.");
+                                    }
+                                    break;
+                                default:
+                                    System.out.println("\tInvalid option. Please try again.");
+                                    break;
+                            }
+                            break;
+                        default:
+                            System.out.println("Invalid option. Please try again.");
+                            break;
+                    }
+
                     break;
                 case 8:
-                    break;
-                case 9:
-                    System.out.print("Enter transaction ID: ");
-                    String transId = scanner.nextLine();
-                    RentalTransaction transaction = crms.findTransactionByID(transId);
-                    if (transaction != null) {
-                        System.out.println(transaction);
-                    } else {
-                        System.out.println("Transaction not found.");
-                    }
-                    break;
-                case 10:
-                    System.out.print("Enter transaction ID: ");
-                    String returnTransId = scanner.nextLine();
-                    System.out.print("Enter return date (yyyy-mm-dd): ");
-                    String returnDateStr = scanner.nextLine();
-                    SimpleDateFormat dateFormat2 = new SimpleDateFormat("yyyy-MM-dd");
-                    Date returnDate = null;
-                    try {
-                        returnDate = dateFormat2.parse(returnDateStr);
-                    } catch (ParseException e) {
-                        System.out.println("Invalid date format. Please use yyyy-mm-dd.");
-                        logger.log(Level.SEVERE, "Invalid date format. Please use yyyy-mm-dd.", e);
-                    }
-                    crms.returnCar(returnTransId, returnDate);
-                    break;
-                case 11:
                     System.out.print("Enter car ID: ");
                     String removeCarId = scanner.nextLine();
                     crms.removeCar(removeCarId);
                     break;
-                case 12:
+                case 9:
                     System.out.print("Enter renter ID: ");
                     String removeRenterId = scanner.nextLine();
                     crms.removeRenter(removeRenterId);
